@@ -1,0 +1,449 @@
+// CloudOS.Jermis Database Schema
+// This is your Prisma schema file for the complete intranet system
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ================================
+// USER MANAGEMENT & AUTHENTICATION
+// ================================
+
+enum UserRole {
+  ADMIN
+  SUPPORT
+  ACCOUNTING
+  WAREHOUSE
+  EMPLOYEE
+  EXTERNAL
+  GUEST
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+model User {
+  id                String      @id @default(cuid())
+  azureId           String?     @unique // Azure AD Object ID
+  email             String      @unique
+  firstName         String
+  lastName          String
+  displayName       String?
+  phoneNumber       String?
+  avatar            String?
+  role              UserRole    @default(EMPLOYEE)
+  status            UserStatus  @default(PENDING)
+  department        String?
+  position          String?
+  manager           User?       @relation("UserManager", fields: [managerId], references: [id])
+  managerId         String?
+  directReports     User[]      @relation("UserManager")
+  
+  // Authentication
+  password          String?     // For non-Azure users
+  lastLogin         DateTime?
+  loginCount        Int         @default(0)
+  isEmailVerified   Boolean     @default(false)
+  emailVerifiedAt   DateTime?
+  
+  // Settings
+  timezone          String      @default("Europe/Zurich")
+  language          String      @default("de")
+  theme             String      @default("light")
+  notifications     Json        @default("{}")
+  
+  // Timestamps
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  // Relations
+  sessions          Session[]
+  timesheets        Timesheet[]
+  expenses          Expense[]
+  files             File[]
+  newsArticles      NewsArticle[]
+  comments          Comment[]
+  notifications     Notification[]
+  auditLogs         AuditLog[]
+  
+  @@map("users")
+}
+
+model Session {
+  id            String    @id @default(cuid())
+  sessionToken  String    @unique
+  userId        String
+  expires       DateTime
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  
+  @@map("sessions")
+}
+
+// ================================
+// DASHBOARD & NEWS
+// ================================
+
+enum NewsStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum NewsPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+model NewsArticle {
+  id          String        @id @default(cuid())
+  title       String
+  content     String
+  excerpt     String?
+  status      NewsStatus    @default(DRAFT)
+  priority    NewsPriority  @default(NORMAL)
+  publishedAt DateTime?
+  expiresAt   DateTime?
+  
+  // Author
+  authorId    String
+  author      User          @relation(fields: [authorId], references: [id])
+  
+  // Targeting
+  targetRoles Json?         // Array of roles that should see this
+  targetUsers Json?         // Array of specific user IDs
+  
+  // Media
+  featuredImage String?
+  attachments   Json?       // Array of file references
+  
+  // Engagement
+  views       Int           @default(0)
+  likes       Int           @default(0)
+  
+  // Timestamps
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  
+  // Relations
+  comments    Comment[]
+  
+  @@map("news_articles")
+}
+
+model Comment {
+  id            String      @id @default(cuid())
+  content       String
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  newsArticleId String?
+  newsArticle   NewsArticle? @relation(fields: [newsArticleId], references: [id])
+  parentId      String?
+  parent        Comment?    @relation("CommentReplies", fields: [parentId], references: [id])
+  replies       Comment[]   @relation("CommentReplies")
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  @@map("comments")
+}
+
+// ================================
+// TIME TRACKING
+// ================================
+
+enum TimesheetStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+}
+
+model Project {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  code        String      @unique
+  clientName  String?
+  isActive    Boolean     @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  budget      Decimal?
+  currency    String      @default("CHF")
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  
+  // Relations
+  timesheets  Timesheet[]
+  
+  @@map("projects")
+}
+
+model Timesheet {
+  id          String          @id @default(cuid())
+  userId      String
+  user        User            @relation(fields: [userId], references: [id])
+  projectId   String?
+  project     Project?        @relation(fields: [projectId], references: [id])
+  
+  // Time tracking
+  date        DateTime        @db.Date
+  startTime   DateTime?
+  endTime     DateTime?
+  hours       Decimal         @db.Decimal(5,2)
+  description String?
+  billable    Boolean         @default(true)
+  
+  // Status
+  status      TimesheetStatus @default(DRAFT)
+  submittedAt DateTime?
+  approvedAt  DateTime?
+  approvedBy  String?
+  rejectedAt  DateTime?
+  rejectionReason String?
+  
+  // Timestamps
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  
+  @@unique([userId, date, projectId])
+  @@map("timesheets")
+}
+
+// ================================
+// EXPENSE MANAGEMENT
+// ================================
+
+enum ExpenseStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  REJECTED
+  PAID
+}
+
+enum ExpenseCategory {
+  TRAVEL
+  MEALS
+  ACCOMMODATION
+  TRANSPORT
+  SUPPLIES
+  EQUIPMENT
+  OTHER
+}
+
+model Expense {
+  id              String          @id @default(cuid())
+  userId          String
+  user            User            @relation(fields: [userId], references: [id])
+  
+  // Expense details
+  title           String
+  description     String?
+  category        ExpenseCategory @default(OTHER)
+  amount          Decimal         @db.Decimal(10,2)
+  currency        String          @default("CHF")
+  expenseDate     DateTime        @db.Date
+  receiptUrl      String?
+  receiptFileName String?
+  
+  // Approval workflow
+  status          ExpenseStatus   @default(DRAFT)
+  submittedAt     DateTime?
+  approvedAt      DateTime?
+  approvedBy      String?
+  rejectedAt      DateTime?
+  rejectionReason String?
+  paidAt          DateTime?
+  
+  // Timestamps
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  @@map("expenses")
+}
+
+// ================================
+// FILE MANAGEMENT
+// ================================
+
+enum FileType {
+  DOCUMENT
+  IMAGE
+  SPREADSHEET
+  PDF
+  OTHER
+}
+
+model File {
+  id              String    @id @default(cuid())
+  filename        String
+  originalName    String
+  mimetype        String
+  size            Int
+  type            FileType
+  url             String
+  sharepointUrl   String?   // SharePoint URL if uploaded there
+  
+  // Metadata
+  description     String?
+  tags            Json?     // Array of tags
+  isPublic        Boolean   @default(false)
+  
+  // Upload info
+  uploadedById    String
+  uploadedBy      User      @relation(fields: [uploadedById], references: [id])
+  
+  // Timestamps
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  @@map("files")
+}
+
+// ================================
+// INVENTORY MANAGEMENT
+// ================================
+
+enum InventoryStatus {
+  IN_STOCK
+  LOW_STOCK
+  OUT_OF_STOCK
+  DISCONTINUED
+}
+
+model InventoryItem {
+  id              String          @id @default(cuid())
+  sku             String          @unique
+  name            String
+  description     String?
+  category        String?
+  
+  // Stock info
+  currentStock    Int             @default(0)
+  minStock        Int             @default(0)
+  maxStock        Int?
+  status          InventoryStatus @default(IN_STOCK)
+  
+  // Pricing
+  costPrice       Decimal?        @db.Decimal(10,2)
+  salePrice       Decimal?        @db.Decimal(10,2)
+  currency        String          @default("CHF")
+  
+  // Product info
+  barcode         String?
+  location        String?
+  supplier        String?
+  imageUrl        String?
+  
+  // Shopify integration
+  shopifyProductId String?
+  shopifyVariantId String?
+  syncWithShopify Boolean         @default(false)
+  
+  // Timestamps
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  
+  // Relations
+  stockMovements  StockMovement[]
+  
+  @@map("inventory_items")
+}
+
+enum MovementType {
+  IN
+  OUT
+  ADJUSTMENT
+  TRANSFER
+}
+
+model StockMovement {
+  id              String        @id @default(cuid())
+  itemId          String
+  item            InventoryItem @relation(fields: [itemId], references: [id])
+  
+  type            MovementType
+  quantity        Int
+  reason          String?
+  reference       String?       // Order number, etc.
+  
+  // Before/after stock levels
+  stockBefore     Int
+  stockAfter      Int
+  
+  // Timestamps
+  createdAt       DateTime      @default(now())
+  
+  @@map("stock_movements")
+}
+
+// ================================
+// NOTIFICATIONS
+// ================================
+
+enum NotificationType {
+  INFO
+  WARNING
+  ERROR
+  SUCCESS
+}
+
+model Notification {
+  id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id])
+  
+  title       String
+  message     String
+  type        NotificationType  @default(INFO)
+  isRead      Boolean           @default(false)
+  actionUrl   String?
+  
+  createdAt   DateTime          @default(now())
+  readAt      DateTime?
+  
+  @@map("notifications")
+}
+
+// ================================
+// AUDIT LOG
+// ================================
+
+enum AuditAction {
+  CREATE
+  UPDATE
+  DELETE
+  LOGIN
+  LOGOUT
+  APPROVE
+  REJECT
+  EXPORT
+}
+
+model AuditLog {
+  id          String      @id @default(cuid())
+  userId      String?
+  user        User?       @relation(fields: [userId], references: [id])
+  
+  action      AuditAction
+  entity      String      // Table/model name
+  entityId    String?     // Record ID
+  changes     Json?       // What changed
+  ipAddress   String?
+  userAgent   String?
+  
+  createdAt   DateTime    @default(now())
+  
+  @@map("audit_logs")
+}
