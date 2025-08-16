@@ -1,12 +1,10 @@
-// CloudOS.Jermis Database Schema
-// This is your Prisma schema file for the complete intranet system
-
+// CloudOS.Jermis Database Schema - SQLite Version
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -14,56 +12,39 @@ datasource db {
 // USER MANAGEMENT & AUTHENTICATION
 // ================================
 
-enum UserRole {
-  ADMIN
-  SUPPORT
-  ACCOUNTING
-  WAREHOUSE
-  EMPLOYEE
-  EXTERNAL
-  GUEST
-}
-
-enum UserStatus {
-  ACTIVE
-  INACTIVE
-  SUSPENDED
-  PENDING
-}
-
 model User {
-  id                String      @id @default(cuid())
-  azureId           String?     @unique // Azure AD Object ID
-  email             String      @unique
+  id                String    @id @default(cuid())
+  azureId           String?   @unique // Azure AD Object ID
+  email             String    @unique
   firstName         String
   lastName          String
   displayName       String?
   phoneNumber       String?
   avatar            String?
-  role              UserRole    @default(EMPLOYEE)
-  status            UserStatus  @default(PENDING)
+  role              String    @default("EMPLOYEE") // Was: UserRole enum
+  status            String    @default("PENDING")  // Was: UserStatus enum
   department        String?
   position          String?
-  manager           User?       @relation("UserManager", fields: [managerId], references: [id])
+  manager           User?     @relation("UserManager", fields: [managerId], references: [id])
   managerId         String?
-  directReports     User[]      @relation("UserManager")
+  directReports     User[]    @relation("UserManager")
   
   // Authentication
-  password          String?     // For non-Azure users
+  password          String?   // For non-Azure users
   lastLogin         DateTime?
-  loginCount        Int         @default(0)
-  isEmailVerified   Boolean     @default(false)
+  loginCount        Int       @default(0)
+  isEmailVerified   Boolean   @default(false)
   emailVerifiedAt   DateTime?
   
   // Settings
-  timezone          String      @default("Europe/Zurich")
-  language          String      @default("de")
-  theme             String      @default("light")
-  notifications     Json        @default("{}")
+  timezone          String    @default("Europe/Zurich")
+  language          String    @default("de")
+  theme             String    @default("light")
+  notificationSettings String @default("{}")  // Was: Json
   
   // Timestamps
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
   
   // Relations
   sessions          Session[]
@@ -93,48 +74,35 @@ model Session {
 // DASHBOARD & NEWS
 // ================================
 
-enum NewsStatus {
-  DRAFT
-  PUBLISHED
-  ARCHIVED
-}
-
-enum NewsPriority {
-  LOW
-  NORMAL
-  HIGH
-  URGENT
-}
-
 model NewsArticle {
-  id          String        @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
   content     String
   excerpt     String?
-  status      NewsStatus    @default(DRAFT)
-  priority    NewsPriority  @default(NORMAL)
+  status      String    @default("DRAFT")    // Was: NewsStatus enum
+  priority    String    @default("NORMAL")   // Was: NewsPriority enum
   publishedAt DateTime?
   expiresAt   DateTime?
   
   // Author
   authorId    String
-  author      User          @relation(fields: [authorId], references: [id])
+  author      User      @relation(fields: [authorId], references: [id])
   
-  // Targeting
-  targetRoles Json?         // Array of roles that should see this
-  targetUsers Json?         // Array of specific user IDs
+  // Targeting (stored as comma-separated strings)
+  targetRoles String?   // Was: Json - now "ADMIN,SUPPORT"
+  targetUsers String?   // Was: Json - now "user1,user2"
   
   // Media
   featuredImage String?
-  attachments   Json?       // Array of file references
+  attachments   String? // Was: Json - now comma-separated file IDs
   
   // Engagement
-  views       Int           @default(0)
-  likes       Int           @default(0)
+  views       Int       @default(0)
+  likes       Int       @default(0)
   
   // Timestamps
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   
   // Relations
   comments    Comment[]
@@ -162,13 +130,6 @@ model Comment {
 // TIME TRACKING
 // ================================
 
-enum TimesheetStatus {
-  DRAFT
-  SUBMITTED
-  APPROVED
-  REJECTED
-}
-
 model Project {
   id          String      @id @default(cuid())
   name        String
@@ -178,7 +139,7 @@ model Project {
   isActive    Boolean     @default(true)
   startDate   DateTime?
   endDate     DateTime?
-  budget      Decimal?
+  budget      Float?      // Was: Decimal
   currency    String      @default("CHF")
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -190,22 +151,22 @@ model Project {
 }
 
 model Timesheet {
-  id          String          @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
-  user        User            @relation(fields: [userId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
   projectId   String?
-  project     Project?        @relation(fields: [projectId], references: [id])
+  project     Project?  @relation(fields: [projectId], references: [id])
   
   // Time tracking
-  date        DateTime        @db.Date
+  date        DateTime  // Was: @db.Date
   startTime   DateTime?
   endTime     DateTime?
-  hours       Decimal         @db.Decimal(5,2)
+  hours       Float     // Was: Decimal(5,2)
   description String?
-  billable    Boolean         @default(true)
+  billable    Boolean   @default(true)
   
   // Status
-  status      TimesheetStatus @default(DRAFT)
+  status      String    @default("DRAFT") // Was: TimesheetStatus enum
   submittedAt DateTime?
   approvedAt  DateTime?
   approvedBy  String?
@@ -213,8 +174,8 @@ model Timesheet {
   rejectionReason String?
   
   // Timestamps
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   
   @@unique([userId, date, projectId])
   @@map("timesheets")
@@ -224,41 +185,23 @@ model Timesheet {
 // EXPENSE MANAGEMENT
 // ================================
 
-enum ExpenseStatus {
-  DRAFT
-  SUBMITTED
-  APPROVED
-  REJECTED
-  PAID
-}
-
-enum ExpenseCategory {
-  TRAVEL
-  MEALS
-  ACCOMMODATION
-  TRANSPORT
-  SUPPLIES
-  EQUIPMENT
-  OTHER
-}
-
 model Expense {
-  id              String          @id @default(cuid())
+  id              String    @id @default(cuid())
   userId          String
-  user            User            @relation(fields: [userId], references: [id])
+  user            User      @relation(fields: [userId], references: [id])
   
   // Expense details
   title           String
   description     String?
-  category        ExpenseCategory @default(OTHER)
-  amount          Decimal         @db.Decimal(10,2)
-  currency        String          @default("CHF")
-  expenseDate     DateTime        @db.Date
+  category        String    @default("OTHER") // Was: ExpenseCategory enum
+  amount          Float     // Was: Decimal(10,2)
+  currency        String    @default("CHF")
+  expenseDate     DateTime  // Was: @db.Date
   receiptUrl      String?
   receiptFileName String?
   
   // Approval workflow
-  status          ExpenseStatus   @default(DRAFT)
+  status          String    @default("DRAFT") // Was: ExpenseStatus enum
   submittedAt     DateTime?
   approvedAt      DateTime?
   approvedBy      String?
@@ -267,8 +210,8 @@ model Expense {
   paidAt          DateTime?
   
   // Timestamps
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
   
   @@map("expenses")
 }
@@ -277,27 +220,19 @@ model Expense {
 // FILE MANAGEMENT
 // ================================
 
-enum FileType {
-  DOCUMENT
-  IMAGE
-  SPREADSHEET
-  PDF
-  OTHER
-}
-
 model File {
   id              String    @id @default(cuid())
   filename        String
   originalName    String
   mimetype        String
   size            Int
-  type            FileType
+  type            String    // Was: FileType enum
   url             String
   sharepointUrl   String?   // SharePoint URL if uploaded there
   
   // Metadata
   description     String?
-  tags            Json?     // Array of tags
+  tags            String?   // Was: Json - now comma-separated tags
   isPublic        Boolean   @default(false)
   
   // Upload info
@@ -315,13 +250,6 @@ model File {
 // INVENTORY MANAGEMENT
 // ================================
 
-enum InventoryStatus {
-  IN_STOCK
-  LOW_STOCK
-  OUT_OF_STOCK
-  DISCONTINUED
-}
-
 model InventoryItem {
   id              String          @id @default(cuid())
   sku             String          @unique
@@ -333,11 +261,11 @@ model InventoryItem {
   currentStock    Int             @default(0)
   minStock        Int             @default(0)
   maxStock        Int?
-  status          InventoryStatus @default(IN_STOCK)
+  status          String          @default("IN_STOCK") // Was: InventoryStatus enum
   
   // Pricing
-  costPrice       Decimal?        @db.Decimal(10,2)
-  salePrice       Decimal?        @db.Decimal(10,2)
+  costPrice       Float?          // Was: Decimal(10,2)
+  salePrice       Float?          // Was: Decimal(10,2)
   currency        String          @default("CHF")
   
   // Product info
@@ -361,19 +289,12 @@ model InventoryItem {
   @@map("inventory_items")
 }
 
-enum MovementType {
-  IN
-  OUT
-  ADJUSTMENT
-  TRANSFER
-}
-
 model StockMovement {
   id              String        @id @default(cuid())
   itemId          String
   item            InventoryItem @relation(fields: [itemId], references: [id])
   
-  type            MovementType
+  type            String        // Was: MovementType enum
   quantity        Int
   reason          String?
   reference       String?       // Order number, etc.
@@ -392,25 +313,18 @@ model StockMovement {
 // NOTIFICATIONS
 // ================================
 
-enum NotificationType {
-  INFO
-  WARNING
-  ERROR
-  SUCCESS
-}
-
 model Notification {
-  id          String            @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String
-  user        User              @relation(fields: [userId], references: [id])
+  user        User      @relation(fields: [userId], references: [id])
   
   title       String
   message     String
-  type        NotificationType  @default(INFO)
-  isRead      Boolean           @default(false)
+  type        String    @default("INFO") // Was: NotificationType enum
+  isRead      Boolean   @default(false)
   actionUrl   String?
   
-  createdAt   DateTime          @default(now())
+  createdAt   DateTime  @default(now())
   readAt      DateTime?
   
   @@map("notifications")
@@ -420,30 +334,19 @@ model Notification {
 // AUDIT LOG
 // ================================
 
-enum AuditAction {
-  CREATE
-  UPDATE
-  DELETE
-  LOGIN
-  LOGOUT
-  APPROVE
-  REJECT
-  EXPORT
-}
-
 model AuditLog {
-  id          String      @id @default(cuid())
+  id          String    @id @default(cuid())
   userId      String?
-  user        User?       @relation(fields: [userId], references: [id])
+  user        User?     @relation(fields: [userId], references: [id])
   
-  action      AuditAction
-  entity      String      // Table/model name
-  entityId    String?     // Record ID
-  changes     Json?       // What changed
+  action      String    // Was: AuditAction enum
+  entity      String    // Table/model name
+  entityId    String?   // Record ID
+  changes     String?   // Was: Json - now JSON string
   ipAddress   String?
   userAgent   String?
   
-  createdAt   DateTime    @default(now())
+  createdAt   DateTime  @default(now())
   
   @@map("audit_logs")
 }
