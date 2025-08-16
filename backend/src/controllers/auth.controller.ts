@@ -399,18 +399,18 @@ export class AuthController {
   }
 
   private generateJwtToken(user: any): string {
-    return jwt.sign(
-      {
-        id: user.id,
-        email: user.email,
-        role: user.role
-      },
-      process.env.JWT_SECRET!,
-      {
-        expiresIn: process.env.JWT_EXPIRES_IN || '24h'
-      }
-    );
-  }
+  return jwt.sign(
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role
+    },
+    process.env.JWT_SECRET!,
+    {
+      expiresIn: process.env.JWT_EXPIRES_IN || '24h'
+    } as jwt.SignOptions
+  );
+}
 
   private async createSession(userId: string, token: string): Promise<void> {
     const expiresAt = new Date();

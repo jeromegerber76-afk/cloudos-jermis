@@ -33,7 +33,7 @@ export const USER_ROLES = {
   EMPLOYEE: 'EMPLOYEE',
   EXTERNAL: 'EXTERNAL',
   GUEST: 'GUEST'
-} as const;
+};
 
 interface OutlookEvent {
   id: string;
@@ -215,13 +215,13 @@ export class DashboardController {
       const userRole = req.user!.role;
 
       // Only admins and support can create news
-      if (![USER_ROLES.ADMIN, USER_ROLES.SUPPORT].includes(userRole)) {
-        res.status(403).json({
-          success: false,
-          error: 'Insufficient permissions'
-        });
-        return;
-      }
+      if (!['ADMIN', 'SUPPORT'].includes(userRole)) {
+  res.status(403).json({
+    success: false,
+    error: 'Insufficient permissions'
+  });
+  return;
+}
 
       const {
         title,
@@ -472,9 +472,9 @@ export class DashboardController {
   }
 
   private async getPendingApprovals(userId: string, userRole: string) {
-    if (![USER_ROLES.ADMIN, USER_ROLES.SUPPORT, USER_ROLES.ACCOUNTING].includes(userRole)) {
-      return { timesheets: 0, expenses: 0 };
-    }
+    if (!['ADMIN', 'SUPPORT', 'ACCOUNTING'].includes(userRole)) {
+  return { timesheets: 0, expenses: 0 };
+}
 
     const [pendingTimesheets, pendingExpenses] = await Promise.all([
       this.prisma.client.timesheet.count({
