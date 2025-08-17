@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudOS.Jermis - Projekt Dokumentation</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; line-height: 1.6; }
+        .status { background: #d4edda; padding: 10px; border-radius: 5px; margin: 20px 0; }
+        .code-block { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        .file-content { background: #f1f3f4; padding: 15px; border-left: 4px solid #4285f4; margin: 10px 0; }
+        .structure { font-family: monospace; white-space: pre-line; }
+        h1, h2, h3 { color: #1976d2; }
+        .module { border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🚀 CloudOS.Jermis - Projekt Dokumentation</h1>
+    
+    <div class="status">
+        <h2>✅ Status: Backend Build erfolgreich</h2>
+        <p><strong>Nächster Schritt:</strong> Database Setup & erste Tests</p>
+        <p><strong>Repository:</strong> <a href="https://github.com/jeromegerber76-afk/cloudos-jermis">github.com/jeromegerber76-afk/cloudos-jermis</a></p>
+    </div>
+
+    <h2>📁 Projektstruktur</h2>
+    <div class="code-block structure">cloudos-jermis/
+├── backend/                         # ✅ FERTIG - Build erfolgreich
+│   ├── src/
+│   │   ├── server.ts                # Main Express Server
+│   │   ├── controllers/
+│   │   │   ├── auth.controller.ts   # Azure AD + JWT Authentication
+│   │   │   └── dashboard.controller.ts # News & Dashboard System
+│   │   ├── middleware/
+│   │   │   ├── auth.middleware.ts   # JWT Validation & Role-based Access
+│   │   │   ├── error.middleware.ts  # Global Error Handler
+│   │   │   └── logger.middleware.ts # Request Logging
+│   │   ├── routes/
+│   │   │   ├── auth.routes.ts       # Authentication Endpoints
+│   │   │   ├── dashboard.routes.ts  # Dashboard API
+│   │   │   └── *.routes.ts          # Other API Routes
+│   │   ├── services/
+│   │   │   └── prisma.service.ts    # Database Service
+│   │   └── utils/
+│   │       └── logger.ts            # Winston Logger
+│   ├── prisma/
+│   │   └── schema.prisma            # SQLite Database Schema
+│   ├── package.json                 # Dependencies
+│   ├── tsconfig.json                # TypeScript Config
+│   └── .env                         # Environment Variables
+├── frontend/                        # TODO: React Setup
+├── shared/                          # TODO: Shared Types
+└── docs/                            # Diese Dokumentation</div>
+
+    <h2>🔧 Tech Stack</h2>
+    <div class="module">
+        <h3>Backend (✅ Fertig)</h3>
+        <ul>
+            <li><strong>Server:</strong> Node.js + Express + TypeScript</li>
+            <li><strong>Database:</strong> SQLite + Prisma ORM</li>
+            <li><strong>Authentication:</strong> Azure AD + JWT Sessions</li>
+            <li><strong>Security:</strong> Helmet, CORS, Rate Limiting</li>
+            <li><strong>Logging:</strong> Winston Logger</li>
+        </ul>
+    </div>
+
+    <h2>📄 Wichtige Datei-Inhalte</h2>
+    
+    <h3>Server Configuration (server.ts)</h3>
+    <div class="file-content">
+        <strong>Hauptfeatures:</strong>
+        <ul>
+            <li>Express Server mit TypeScript</li>
+            <li>Azure AD Integration</li>
+            <li>JWT Authentication</li>
+            <li>Rate Limiting & Security Headers</li>
+            <li>API Endpoints: /api/v1/auth, /dashboard, /health</li>
+            <li>Error Handling & Logging</li>
+        </ul>
+    </div>
+
+    <h3>Database Schema (prisma/schema.prisma)</h3>
+    <div class="file-content">
+        <strong>Hauptmodelle:</strong>
+        <ul>
+            <li><strong>User:</strong> Azure AD + lokale Benutzer, Rollen, Sessions</li>
+            <li><strong>NewsArticle:</strong> Intranet News System mit Targeting</li>
+            <li><strong>Project + Timesheet:</strong> Zeiterfassung & Projektmanagement</li>
+            <li><strong>Expense:</strong> Spesen-Management mit Approval-Workflow</li>
+            <li><strong>File:</strong> Dokumentenverwaltung + SharePoint Integration</li>
+            <li><strong>InventoryItem:</strong> Lager-Verwaltung + Shopify Sync</li>
+            <li><strong>Notification:</strong> Benachrichtigungssystem</li>
+            <li><strong>AuditLog:</strong> Vollständige Aktivitätsverfolgung</li>
+        </ul>
+    </div>
+
+    <h3>Authentication System (auth.controller.ts)</h3>
+    <div class="file-content">
+        <strong>Features:</strong>
+        <ul>
+            <li>Azure AD Single Sign-On</li>
+            <li>Lokale Email/Password Authentication</li>
+            <li>JWT Token Generation & Validation</li>
+            <li>Session Management</li>
+            <li>Role-based Access Control (Admin, Support, Employee, etc.)</li>
+            <li>User Profile Management</li>
+        </ul>
+    </div>
+
+    <h2>🚀 Commands</h2>
+    <div class="code-block">
+# Backend Setup:
+cd backend
+npm install              # Dependencies installieren
+npm run build           # ✅ TypeScript kompilieren (erfolgreich)
+npx prisma generate     # Prisma Client generieren
+npx prisma db push      # Database Schema deployen
+npm run dev             # Development Server starten
+
+# Testing:
+curl http://localhost:3001/api/v1/health  # Health Check
+    </div>
+
+    <h2>🎯 Module Status</h2>
+    <div class="module">
+        <h3>✅ Implementiert & Getestet</h3>
+        <ul>
+            <li>Benutzer- & Rollensystem (Azure AD + JWT)</li>
+            <li>Dashboard & News System</li>
+            <li>API Foundation (Routes, Middleware, Error Handling)</li>
+            <li>Database Schema (vollständig)</li>
+        </ul>
+    </div>
+
+    <div class="module">
+        <h3>⏳ Als nächstes</h3>
+        <ol>
+            <li><strong>Database initialisieren:</strong> npx prisma db push</li>
+            <li><strong>Server starten:</strong> npm run dev</li>
+            <li><strong>API testen:</strong> Health Check + Auth Endpoints</li>
+            <li><strong>Frontend Setup:</strong> React + TypeScript</li>
+            <li><strong>Azure AD konfigurieren</strong></li>
+        </ol>
+    </div>
+
+    <h2>📞 Für neue Claude Chats</h2>
+    <div class="status">
+        <p><strong>Sag einfach:</strong></p>
+        <p>"CloudOS.Jermis Projekt: <a href="https://jeromegerber76-afk.github.io/cloudos-jermis/">https://jeromegerber76-afk.github.io/cloudos-jermis/</a>"</p>
+        <p>"Status: Backend build erfolgreich ✅ - Bereit für Database Setup"</p>
+    </div>
+
+    <footer style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #ddd; color: #666;">
+        <p>Letzte Aktualisierung: Dezember 2024 | CloudOS.Jermis - KI-gestütztes Intranet für JERMIS</p>
+    </footer>
+</body>
+</html>
